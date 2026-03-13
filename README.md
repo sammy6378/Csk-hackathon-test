@@ -56,14 +56,14 @@ The hackathon runs for **10 learning days**, followed by final project submissio
 ### 📊 Overall Progress
 
 🔓 **Day 1: 🚀 Setup & First React Native App** - [Start Challenge](./challenges/day-01-setup/README.md)  
-🔒 **Day 2: 🎨 Layout and Styling** - Locked  
-🔒 **Day 3: 🧩 Reusable Components** - Locked  
-🔒 **Day 4: 📋 Lists with FlatList** - Locked  
-🔒 **Day 5: 🧭 Navigation** - Locked  
-🔒 **Day 6: 🖊 Forms and Inputs** - Locked  
-🔒 **Day 7: 🌐 Fetching Data from APIs** - Locked  
-🔒 **Day 8: 🔐 Auth with Supabase** - Locked  
-🔒 **Day 9: 💾 Localstorage** - Locked  
+🔒 **Day 2: Layout and Styling** - Locked  
+🔒 **Day 3: Reusable Components** - Locked  
+🔒 **Day 4: Lists with FlatList** - Locked  
+🔒 **Day 5: Navigation** - Locked  
+🔒 **Day 6: Forms and Inputs** - Locked  
+🔒 **Day 7: Fetching Data from APIs** - Locked  
+🔒 **Day 8: Auth with Supabase** - Locked  
+🔒 **Day 9: Localstorage** - Locked  
 🔒 **Day 10: 🏆 Final Project** - Locked  
 
 **Last completed:** None
