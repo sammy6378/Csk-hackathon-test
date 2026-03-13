@@ -1,0 +1,171 @@
+name: 🚀 Verify & Unlock Next Challenge
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+jobs:
+  verify-and-unlock:
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'submission')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repo
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      # Step 2: Determine the completed day and participant
+      - name: Determine challenge day
+        id: day
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "issues" ]]; then
+            BODY=$(jq -r .issue.body "$GITHUB_EVENT_PATH")
+            DAY=$(echo "$BODY" | grep -oE 'day-(\d+)' | head -1 | grep -oE '\d+')
+            USER=$(jq -r .issue.user.login "$GITHUB_EVENT_PATH")
+          elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            BODY=$(jq -r .pull_request.body "$GITHUB_EVENT_PATH")
+            BRANCH=$(jq -r .pull_request.head.ref "$GITHUB_EVENT_PATH")
+            DAY=$(echo "$BRANCH" | grep -oE 'day-(\d+)' | head -1 | grep -oE '\d+')
+            USER=$(jq -r .pull_request.user.login "$GITHUB_EVENT_PATH")
+          fi
+          echo "DAY=$DAY" >> $GITHUB_ENV
+          echo "USER=$USER" >> $GITHUB_ENV
+          echo "Completed Day: $DAY by $USER"
+
+      - name: Checkout submission folder (if PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: submission
+
+      - name: Install dependencies
+        run: |
+          cd ${GITHUB_EVENT_NAME=="pull_request" ? "submission" : "submissions/day-${{ env.DAY }}/$USER-*"}
+          npm install
+
+      - name: Run ESLint
+        continue-on-error: true
+        run: |
+          cd ${GITHUB_EVENT_NAME=="pull_request" ? "submission" : "submissions/day-${{ env.DAY }}/$USER-*"}
+          npx eslint . --ext .js,.jsx,.ts,.tsx || true
+
+      - name: TypeScript Check
+        run: |
+          cd ${GITHUB_EVENT_NAME=="pull_request" ? "submission" : "submissions/day-${{ env.DAY }}/$USER-*"}
+          npx tsc --noEmit || true
+
+      - name: Expo Prebuild Check
+        run: |
+          cd ${GITHUB_EVENT_NAME=="pull_request" ? "submission" : "submissions/day-${{ env.DAY }}/$USER-*"}
+          npx expo prebuild --non-interactive --check || true
+
+      # Step 8: Update main README and unlock next challenge
+      - name: Unlock next challenge
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+
+            const day = parseInt(process.env.DAY);
+            const username = process.env.USER;
+
+            const challengeNames = {
+            1: { emoji: '🚀', name: 'Setup & First React Native App' },
+            2: { emoji: '🎨', name: 'Layout and Styling' },
+            3: { emoji: '🧩', name: 'Reusable Components' },
+            4: { emoji: '📋', name: 'Lists with FlatList' },
+            5: { emoji: '🧭', name: 'Navigation' },
+            6: { emoji: '🖊', name: 'Forms and Inputs' },
+            7: { emoji: '🌐', name: 'Fetching Data from APIs' },
+            8: { emoji: '🔐', name: 'Auth with Supabase' },
+            9: { emoji: '💾', name: 'Localstorage' },
+            10: { emoji: '🏆', name: 'Final Project' }
+            };
+
+            let readme = fs.readFileSync('README.md', 'utf8');
+            const progressPattern = /<!-- PROGRESS:START -->[\s\S]*<!-- PROGRESS:END -->/;
+
+            const progressBar = `<!-- PROGRESS:START -->
+            ### Overall Progress
+
+            ${Array.from({length: 10}, (_, i) => {
+            const d = i + 1;
+            if (d <= day) {
+                return `✅ **Day ${d}: ${challengeNames[d].emoji} ${challengeNames[d].name}** - Completed by @${username}`;
+            } else if (d === day + 1) {
+                return `🔓 **Day ${d}: ${challengeNames[d].emoji} ${challengeNames[d].name}** - [Start Challenge](./challenges/day-${d.toString().padStart(2,'0')}-${challengeNames[d].name.toLowerCase().replace(/ /g,'-')}/README.md)`;
+            } else {
+                return `🔒 **Day ${d}: ${challengeNames[d].emoji} ${challengeNames[d].name}** - Locked`;
+            }
+            }).join('\n')}
+
+            **Last completed:** Day ${day} by @${username}
+            <!-- PROGRESS:END -->`;
+
+            readme = readme.replace(progressPattern, progressBar);
+            fs.writeFileSync('README.md', readme);
+
+            execSync('git config user.name "github-actions[bot]"');
+            execSync('git config user.email "github-actions[bot]@users.noreply.github.com"');
+            execSync('git add README.md');
+            execSync(`git commit -m "🔓 Unlock Day ${day + 1} for @${username}" || echo "No changes to commit"`);
+            execSync('git push');
+
+            // Close the issue if applicable
+            if (context.payload.issue) {
+              await github.rest.issues.update({
+                issue_number: context.payload.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'closed',
+                state_reason: 'completed'
+              });
+            }
+
+            // Create next challenge issue
+            if (day < 10) {
+              const nextDay = day + 1;
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🎯 Ready for Day ${nextDay}: ${challengeNames[nextDay].name}`,
+                body: `@${username}, you completed Day ${day}! 🎉
+
+            ## Next Challenge: Day ${nextDay} [${challengeNames[nextDay].emoji} ${challengeNames[nextDay].name}]
+            ### Instructions:
+            - Complete challenge in ./challenges/day-${nextDay.toString().padStart(2,'0')}-${challengeNames[nextDay].name.toLowerCase().replace(/ /g,'-')}/README.md
+            - Submit in \`submissions/day-${nextDay.toString().padStart(2,'0')}/\` with folder name \`${username}-${challengeNames[nextDay].name.toLowerCase().replace(/ /g,'-')}\`
+            - Create a PR or Issue using "Challenge Complete" template
+            `,
+                labels: ['next-challenge', `day-${nextDay}`],
+                assignees: [username]
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🏆 CONGRATULATIONS! All challenges completed!`,
+                body: `@${username}, you completed all 10 days of the hackathon! 🌟`,
+                labels: ['winner', 'completed'],
+                assignees: [username]
+              });
+            }

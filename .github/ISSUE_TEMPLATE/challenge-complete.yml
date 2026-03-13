@@ -1,0 +1,55 @@
+name: 🏆 Challenge Complete
+description: Submit your completed challenge to unlock the next one
+title: "Challenge: day-[NUMBER]-[NAME]"
+labels: ["submission", "ready-for-review"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Great work on completing this challenge!
+        Fill out the details below to verify your completion.
+  
+  - type: dropdown
+    id: challenge-day
+    attributes:
+      label: Which challenge did you complete?
+      description: Select the day number
+      options:
+        - "day-01-setup-first-react-native-app"
+        - "day-02-layout-and-styling"
+        - "day-03-reusable-components"
+        - "day-04-lists-with-flatlist"
+        - "day-05-navigation"
+        - "day-06-forms-and-inputs"
+        - "day-07-fetching-data-from-apis"
+        - "day-08-auth-with-supabase"
+        - "day-09-localstorage"
+        - "day-10-final-project"
+    validations:
+      required: true
+      
+  - type: input
+    id: submission-link
+    attributes:
+      label: 📎 Link to your submission
+      description: Paste the link to your submission folder/file
+      placeholder: "https://github.com/username/repo/tree/main/submissions/day-01/yourname-setup"
+    validations:
+      required: true
+      
+  - type: textarea
+    id: reflection
+    attributes:
+      label: 💭 What did you learn?
+      description: Share a quick reflection on this challenge
+      placeholder: "I learned how to..."
+    validations:
+      required: false
+      
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Verification
+      options:
+        - label: I have completed the challenge and my submission is in the correct folder
+          required: true
